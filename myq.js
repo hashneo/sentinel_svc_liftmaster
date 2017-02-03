@@ -131,37 +131,35 @@ function myq(config) {
             console.log( options.url );
             //console.log( data );
 
-            try {
-                request(options, (err, response, body) => {
-
+            request(options, (err, response, body) => {
+                try {
                     body = JSON.parse(body);
-                    if (body.ReturnCode === '0') {
-                        fulfill( body );
-                    } else {
-                        if ( body.ReturnCode === '-3333' ){
-                            console.log('MyQ invalid security token. Need to reset.');
-                            token = null;
-                            call( url, method, data )
-                                .then(  (result) =>{
-                                    fulfill(result);
-                                })
-                                .catch( (err) =>{
-                                    reject(err);
-                                });
-                            return;
-                        }else{
-                            console.log('MyQ call error => %s', body.ReturnCode);
-                        }
-                        reject( {options, body} );
+                }catch(e){
+                    console.error(err);
+                    reject(e);
+                    return;
+                }
+
+                if (body.ReturnCode === '0') {
+                    fulfill( body );
+                } else {
+                    if ( body.ReturnCode === '-3333' ){
+                        console.log('MyQ invalid security token. Need to reset.');
+                        token = null;
+                        call( url, method, data )
+                            .then(  (result) =>{
+                                fulfill(result);
+                            })
+                            .catch( (err) =>{
+                                reject(err);
+                            });
+                        return;
+                    }else{
+                        console.log('MyQ call error => %s', body.ReturnCode);
                     }
-
-
-                });
-            }catch(e){
-                console.error(err);
-                reject(e);
-            }
-
+                    reject( {options, body} );
+                }
+            });
         });
 	}
 

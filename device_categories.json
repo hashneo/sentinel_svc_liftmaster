@@ -1,0 +1,47 @@
+{ 
+	"1" : { "name" : "interface" 	    , "variable" : "", "subcategories" : { } }, 
+	"2" : { "name" : "light.dimmable"   , "variable" : "level", "subcategories" : { 
+																"1" : { "name" : "interior" } , 
+																"2" : { "name" : "exterior" }  
+															}  },
+	"3" : { "name" : "switch"           , "variable" : "status", "subcategories" : { }  },
+	"4" : { "name" : "sensor"  			, "variable" : "tripped"	   , "subcategories" : { 
+															   		"1" : { "name" : "door" }, 
+															   		"2" : { "name" : "leak" }, 
+															   		"3" : { "name" : "motion" },
+															   		"4" : { "name" : "smoke" }, 
+															   		"5" : { "name" : "co2" },
+															   		"6" : { "name" : "glass" } 
+															   	} },
+	"5" : { "name" : "hvac"             , "variable" : "ModeStatus", "subcategories" : { 
+																"1" : { "name" : "hvac" }, 
+																"2" : { "name" : "heater" } 
+															} },
+	"6" : { "name" : "camera"           , "variable" : "", "subcategories" : { } },
+	"7" : { "name" : "lock" 	        , "variable" : "status", "subcategories" : { } },
+	"8" : { "name" : "window"  			, "variable" : "status", "subcategories" : { 
+																"1" : { "name" : "cover" }, 
+																"2" : { "name" : "zwave2rtsi" } 
+															} },
+	"9" : { "name" : "remote" 		 	, "variable" : "", "subcategories" : { } },
+	"10": { "name" : "ir.tx"            , "variable" : "", "subcategories" : { 
+																"1" : { "name" : "irt" } , 
+																"2" : { "name" : "usbuirt" } 
+															} }, 
+	"11": { "name" : "io.generic"       , "variable" : "", "subcategories" : { } },
+	"12": { "name" : "sensor.generic"   , "variable" : "", "subcategories" : { } },
+	"13": { "name" : "serial"	        , "variable" : "", "subcategories" : { } },
+	"14": { "name" : "scene.controller" , "variable" : "", "subcategories" : { } },
+	"15": { "name" : "av"		        , "variable" : "", "subcategories" : { } },
+	"16": { "name" : "sensor.humidity"         , "variable" : "humidity", "subcategories" : { } },
+	"17": { "name" : "sensor.temperature"      , "variable" : "temperature", "subcategories" : { } },
+	"18": { "name" : "sensor.light"     , "variable" : "light", "subcategories" : { } },
+	"19": { "name" : "zwave"            , "variable" : "", "subcategories" : { } },
+	"20": { "name" : "insteon"          , "variable" : "", "subcategories" : { } },
+	"21": { "name" : "meter.power"      , "variable" : "", "subcategories" : { } },
+	"22": { "name" : "alarm.panel"      , "variable" : "", "subcategories" : { } },
+	"23": { "name" : "alarm.partition"  , "variable" : "", "subcategories" : { } },
+	"24": { "name" : "siren"			, "variable" : "", "subcategories" : { } }
+}
+
+    

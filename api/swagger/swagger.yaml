@@ -1,0 +1,196 @@
+---
+swagger: '2.0'
+info:
+  description: ''
+  version: '0.0.1'
+  title: 'data'
+  termsOfService: ''
+  contact:
+    name: ''
+    url: ''
+    email: 'steven.taylor@me.com'
+  license:
+    name: 'Steven Taylor'
+host: localhost
+basePath: /
+schemes:
+- https
+consumes:
+- application/json
+produces:
+- application/json
+
+securityDefinitions:
+  Oauth:
+    type: oauth2
+    scopes:
+      open: no security
+      user: a user
+    flow: implicit
+    authorizationUrl: https://my_aouth/
+
+security:
+  - Oauth: []
+
+paths:
+  /health:
+    x-swagger-router-controller: health
+    get:
+      tags:
+      - health
+      operationId: health
+      security:
+      - Oauth:
+        - open
+      parameters:
+      - in: query
+        name: id
+        type: string
+      responses:
+        200:
+          description: health information
+          schema:
+            $ref: '#/definitions/Status'
+        400:
+          description: bad request
+        410:
+          description: invalid service id
+        default:
+          $ref: '#/responses/Error'
+
+  /reload:
+    x-swagger-router-controller: system
+    get:
+      operationId: Reload
+      security:
+      - Oauth:
+        - user
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+        default:
+          $ref: '#/responses/Error'
+
+  /devices:
+    x-swagger-router-controller: system
+    get:
+      operationId: getDevices
+      security:
+      - Oauth:
+        - user
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+        default:
+          $ref: '#/responses/Error'
+
+  /device/{id}/status:
+    x-swagger-router-controller: system
+    get:
+      operationId: getDeviceStatus
+      security:
+      - Oauth:
+        - user
+      parameters:
+      - in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+        default:
+          $ref: '#/responses/Error'
+
+  /door/{id}/light/{state}:
+    x-swagger-router-controller: light
+    get:
+      operationId: setLightState
+      security:
+      - Oauth:
+        - user
+      parameters:
+      - in: path
+        name: id
+        required: true
+        type: string
+      - in: path
+        name: state
+        required: true
+        type: string
+        enum: [
+          on,
+          off
+        ]
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+        default:
+          $ref: '#/responses/Error'
+
+  /door/{id}/{state}:
+    x-swagger-router-controller: door
+    get:
+      operationId: setDoorState
+      security:
+      - Oauth:
+        - user
+      parameters:
+      - in: path
+        name: id
+        required: true
+        type: string
+      - in: path
+        name: state
+        required: true
+        type: string
+        enum: [
+          open,
+          close
+        ]
+      responses:
+        200:
+          description: ok
+          schema:
+            type: object
+        default:
+          $ref: '#/responses/Error'
+
+  /swagger:
+      x-swagger-pipe: swagger_raw
+
+responses:
+
+  Error:
+    description: error
+    schema:
+      $ref: '#/definitions/Error'
+
+definitions:
+
+  Error:
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+
+
+  Status:
+    type: object
+    additionalProperties: false
+    properties:
+      status:
+        type: string

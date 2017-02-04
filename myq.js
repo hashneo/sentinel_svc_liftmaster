@@ -10,7 +10,18 @@ function myq(config) {
     const redis = require('redis');
     var moment = require('moment');
 
-    let pub = redis.createClient({ host: '10.0.1.10' });
+    let pub = redis.createClient(
+        {
+            host: process.env.REDIS || global.config.redis || '127.0.0.1' ,
+            socket_keepalive: true,
+            retry_unfulfilled_commands: true
+        }
+    );
+
+    pub.on('end', function(e){
+        console.log('Redis hung up, committing suicide');
+        process.exit(1);
+    });
 
     var NodeCache = require( "node-cache" );
 
@@ -26,6 +37,15 @@ function myq(config) {
     require('request').debug = true
     require('request-debug')(request);
 */
+
+    deviceCache.on( "set", function( key, value ){
+    });
+
+    statusCache.on( "set", function( key, value ){
+        let data = JSON.stringify( { module: 'liftmaster', id : key, value : value });
+        console.log( data );
+        pub.publish("sentinel.device.update",  data);
+    });
 
     var api = {
 		"login" : "/Membership/ValidateUserWithCulture?appId={appId}&securityToken=null&username={username}&password={password}&culture={culture}",
@@ -50,7 +70,7 @@ function myq(config) {
         device['id'] = d.DeviceId;
         device['type'] = mapDeviceType( d.MyQDeviceTypeId );
         device['current']['door'] = {};
-        device['current']['light'] = { 'on' : false };
+        //device['current']['light'] = { 'on' : false };
 
         d.Attributes.map(function (a) {
             //if ( a.MyQDeviceTypeAttributeName !== undefined )
@@ -61,6 +81,8 @@ function myq(config) {
             } else if (a.Name === 'desc') {
                 device['name'] = a.Value;
             } else if (a.Name === 'worklightstate') {
+                if (!device['current']['light'])
+                    device['current']['light'] = {};
                 device['current']['light']['on'] = a.Value == 'on';
                 device['current']['light']['updated'] = moment(parseInt(a.UpdatedTime)).format();
             } else if (a.Name === 'vacationmode') {
@@ -280,10 +302,12 @@ function myq(config) {
                     let  devices = result.Devices;
                     for( let i in devices ) {
                         let d = processDevice(devices[i]);
-                        if ( d.current.light ){
-                            statusCache.set(d.id + '_light', d.current.light);
+                        if ( d.type !== 'gateway') {
+                            if (d.current.light) {
+                                statusCache.set(d.id + '_light', d.current.light);
+                            }
+                            statusCache.set(d.id, d.current.door);
                         }
-                        statusCache.set(d.id, d.current.door);
                     }
                     fulfill();
                 })
@@ -317,11 +341,12 @@ function myq(config) {
                             deviceCache.set(d_light.id, d_light);
                             statusCache.set(d.id + '_light', d.current.light);
                         }
-
-                        statusCache.set(d.id, d.current.door);
-                        delete d.current;
-                        deviceCache.set(d.id, d);
-                        devices.push(d);
+                        if ( d.type !== 'gateway') {
+                            statusCache.set(d.id, d.current.door);
+                            delete d.current;
+                            deviceCache.set(d.id, d);
+                            devices.push(d);
+                        }
                     }
                     fulfill(devices);
                 })
@@ -338,7 +363,6 @@ function myq(config) {
             function pollSystem() {
                 updateStatus()
                     .then((devices) => {
-
                         setTimeout(pollSystem, 10000);
                     })
                     .catch((err) => {
@@ -355,14 +379,14 @@ function myq(config) {
             console.error(err);
             process.exit(1);
         });
-
+/*
     this.raw = function( params, success, failed ){
         var url = api.system;
         call( url, "get", null, function(data){
             success(data);
         });
     };
-
+*/
 	this.system = function( params, success, failed ){
 		that.status( null, function( status ){
 			var devices = [];
@@ -374,7 +398,6 @@ function myq(config) {
                 //    typeNameCache.devices[d.MyQDeviceTypeId] = d.MyQDeviceTypeName;
 
                 if ( d.MyQDeviceTypeId !== 1 /*Gateway*/ ) {
-
                     devices.push( processDevice( d ) );
                 }
             });

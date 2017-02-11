@@ -72,7 +72,7 @@ function myq(config) {
         var device = { 'current' : {} };
         device['name'] = d.Name;
         device['id'] = d.MyQDeviceId;
-        device['type'] = mapDeviceType( d.MyQDeviceTypeId );
+        device['type'] = mapDeviceType( d.DeviceTypeId );
         device['current']['door'] = {};
 
         device['current']['door']['state'] = stateMap[ parseInt(d.State) ];

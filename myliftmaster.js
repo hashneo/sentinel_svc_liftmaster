@@ -74,11 +74,9 @@ function myq(config) {
         device['id'] = d.MyQDeviceId;
         device['type'] = mapDeviceType( d.DeviceTypeId );
         device['current']['door'] = {};
-
         device['current']['door']['state'] = stateMap[ parseInt(d.State) ];
         device['current']['door']['updated'] = moment(d.LastUpdateDateTime).format();
         device['current']['door']['locked'] = d.DisableControl;
-
         return device;
     }
 

@@ -36,7 +36,7 @@ consul.kv.get('config/sentinel/liftmaster', function(err, result) {
     let config = JSON.parse(result.Value);
 
     global.config = config;
-    global.myq = require('./myq.js')(config);
+    global.myq = require('./myliftmaster.js')(config);
 });
 
 process.on('unhandledRejection', (reason, p) => {

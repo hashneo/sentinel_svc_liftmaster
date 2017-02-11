@@ -31,11 +31,16 @@ function myq(config) {
     var merge = require('deepmerge');
 
     var request = require('request');
+
+    var jar = request.jar();
+
+    request = request.defaults({jar: jar});
+
     var https = require('https');
     var keepAliveAgent = new https.Agent({ keepAlive: true });
 /*
-    require('request').debug = true
-    require('request-debug')(request);
+     require('request').debug = true
+     require('request-debug')(request);
 */
 
     deviceCache.on( "set", function( key, value ){
@@ -48,106 +53,63 @@ function myq(config) {
     });
 
     var api = {
-		"login" : "/Membership/ValidateUserWithCulture?appId={appId}&securityToken=null&username={username}&password={password}&culture={culture}",
-		"system" : "/api/UserDeviceDetails?appId={appId}&securityToken={securityToken}",
-		"get" : "/Device/getDeviceAttribute?appId={appId}&securityToken={securityToken}&devId={deviceId}&name={command}",
-		"set" : "/Device/setDeviceAttribute"
-	};
+        "login" : "/",
+        "system" : "/api/MyQDevices/GetAllDevices?brandName=Liftmaster",
+        "set" : "/Device/TriggerStateChange"
+    };
 
-	for( let k in api ){
-		api[k] = api[k].replace('{appId}', config.appid).replace('{culture}', config.culture);
-	}	
+    for( let k in api ){
+        api[k] = api[k].replace('{appId}', config.appid).replace('{culture}', config.culture);
+    }
 
-	var that = this;
+    var that = this;
 
-	var token = null;
+    var token = null;
 
     var typeNameCache = { 'devices' : {}, 'attributes' : {} };
 
     function processDevice( d ){
         var device = { 'current' : {} };
-        device['name'] = d.DeviceName;
-        device['id'] = d.DeviceId;
+        device['name'] = d.Name;
+        device['id'] = d.MyQDeviceId;
         device['type'] = mapDeviceType( d.MyQDeviceTypeId );
         device['current']['door'] = {};
-        //device['current']['light'] = { 'on' : false };
 
-        d.Attributes.map(function (a) {
-            //if ( a.MyQDeviceTypeAttributeName !== undefined )
-            //    typeNameCache.attributes[a.MyQDeviceTypeAttributeId] = a.MyQDeviceTypeAttributeName;
-            if (a.Name === 'doorstate') {
-                device['current']['door']['state'] = stateMap[ a.Value ];
-                device['current']['door']['updated'] = moment(parseInt(a.UpdatedTime)).format();
-            } else if (a.Name === 'desc') {
-                device['name'] = a.Value;
-            } else if (a.Name === 'worklightstate') {
-                if (!device['current']['light'])
-                    device['current']['light'] = {};
-                device['current']['light']['on'] = a.Value == 'on';
-                device['current']['light']['updated'] = moment(parseInt(a.UpdatedTime)).format();
-            } else if (a.Name === 'vacationmode') {
-                device['current']['door']['locked'] = a.Value;
-            }
-        });
-
-        if ( device.type === 'gateway') {
-            delete device.door;
-            delete device.light;
-        }
+        device['current']['door']['state'] = stateMap[ parseInt(d.State) ];
+        device['current']['door']['updated'] = moment(d.LastUpdateDateTime).format();
+        device['current']['door']['locked'] = d.DisableControl;
 
         return device;
     }
 
-	function call(url, method, data){
+    function call(url, method, data, type){
 
         return new Promise( (fulfill, reject) => {
 
-            if ( token == null  && url !== api.login ){
-                call( api.login, 'GET' )
-                    .then( (result) => {
-                        // make sure no one else already set the token while we were waiting for the callback
-                        if ( token === null ) {
-                            token = result.SecurityToken;
-                            console.log('MyQ Security token => %s', token);
-                            config['userId'] = result.UserId;
-                        }
-                        // Make the original call with the new token
-                        call( url, method, data )
-                            .then(  (result) =>{
-                                fulfill(result);
-                            })
-                            .catch( (err) =>{
-                                reject(err);
-                            });
-                    })
-                    .catch( (err) =>{
-                        reject(err);
-                    });
-                return;
-            }
+            type = type || 'application/json';
 
             let options = {
-                url : 'https://' + config.server + url.replace('{username}', config.user).replace('{password}',config.password).replace('{securityToken}', token),
+                url : 'https://' + config.server + url,
                 method : method,
                 encoding : null,
-                headers : { 'accept' : 'application/json'},
+                headers : {
+                    'accept' : 'application/json',
+                    'User-Agent' : 'Mozilla/5.0'
+                },
                 timeout : 90000,
-                agent : keepAliveAgent
+                agent : keepAliveAgent,
+                followRedirect: false
             };
 
             if ( data === undefined )
                 data = null;
 
             if ( data !== null ){
-                if ( !(data instanceof String) )
+                if ( type === 'application/json' )
                     data = JSON.stringify(data);
 
-                data = data.replace('{securityToken}', token);
-
                 options['body'] = data;
-
-                options['headers']['content-type'] = 'application/json';
-                    // options['contentType'] = 'application/json';
+                options['headers']['content-type'] = type;
             }
 
             console.log( options.url );
@@ -155,41 +117,71 @@ function myq(config) {
 
             request(options, (err, response, body) => {
 
+                //console.log(body.toString('utf8'));
+
                 if ( err ) {
                     reject(err);
                     return;
                 }
 
                 try {
-                    body = JSON.parse(body);
+                    if ( response.headers['content-type'].indexOf('application/json') != -1) {
+
+                        body = JSON.parse(body);
+
+                        if (body.Message) {
+                            if (body.Message === 'Authorization has been denied for this request.') {
+
+                                if ( url ===  api.login ){
+                                    reject( new Error( 'Invalid Authorization') );
+                                    return;
+                                }
+                                call( api.login, 'POST',  'Email=' + config.user + '&' + 'Password=' + config.password, 'application/x-www-form-urlencoded' )
+                                    .then( (result) => {
+                                        call(url, method, data)
+                                            .then((result) => {
+                                                fulfill(result);
+                                            })
+                                            .catch((err) => {
+                                                reject(err);
+                                            });
+                                    })
+                                    .catch( (err) =>{
+                                        reject(err);
+                                    });
+
+                                return;
+                            }
+                        }
+                    }
                 }catch(e){
                     console.error(err);
                     reject(e);
                     return;
                 }
 
-                if (body.ReturnCode === '0') {
-                    fulfill( body );
-                } else {
-                    if ( body.ReturnCode === '-3333' ){
-                        console.log('MyQ invalid security token. Need to reset.');
-                        token = null;
-                        call( url, method, data )
-                            .then(  (result) =>{
-                                fulfill(result);
-                            })
-                            .catch( (err) =>{
-                                reject(err);
-                            });
-                        return;
-                    }else{
-                        console.log('MyQ call error => %s', body.ReturnCode);
-                    }
-                    reject( {options, body} );
+                let cookies = jar.getCookies(options.url);
+
+                let hasSession = false;
+                cookies.forEach( (cookie) => {
+                    if ( cookie.key === '.AspNet.ApplicationCookie' )
+                        hasSession = true;
+                });
+
+                if ( !hasSession ){
+                    reject( new Error('User could not be authenticated') );
+                    return;
                 }
+
+                fulfill( body );
+
             });
         });
-	}
+    }
+
+    function login(){
+
+    }
 
     const stateMap = {
         1 : 'open',
@@ -199,37 +191,20 @@ function myq(config) {
         5 : 'closing'
     };
 
-    this.getAttribute = ( id, attr ) => {
-        let data = {
-            'AttributeName' : attr,
-            'DeviceId' : id,
-            'ApplicationId' : config.appid,
-            'AttributeValue' : value,
-            'SecurityToken' : '{securityToken}'
-        };
-        return call( api.get, 'GET', data, function(data){
-            let result = {};
-            result['id'] = id;
-            result['updated'] = moment( parseInt(data.UpdatedTime )).format();
-        } );
-    };
-
     this.setAttribute = ( id, attr, value ) => {
 
         return new Promise( (fulfill, reject) => {
 
-            let data = {
-                'AttributeName': attr,
-                'DeviceId': id,
-                'ApplicationId': config.appid,
-                'AttributeValue': value,
-                'SecurityToken': '{securityToken}'
-            };
-            return call(api.set, 'PUT', data )
+            let url = api.set + '?myQDeviceId=' + id + '&attributename=' + attr + '&attributevalue=' + value;
+            //https://www.myliftmaster.com/Device/TriggerStateChange?myQDeviceId=653445&attributename=desireddoorstate&attributevalue=1
+
+            return call(url, 'POST' )
                 .then( (data) => {
                     let result = {};
+                    /*
                     result['id'] = id;
                     result['updated'] = moment(parseInt(data.UpdatedTime)).format();
+                    */
                     fulfill(result);
                 })
                 .catch( (err) =>{
@@ -304,14 +279,10 @@ function myq(config) {
     function updateStatus() {
         return new Promise( ( fulfill, reject ) => {
             call( api.system, 'get' )
-                .then( (result) => {
-                    let  devices = result.Devices;
-                    for( let i in devices ) {
-                        let d = processDevice(devices[i]);
+                .then( (results) => {
+                    for( let i in results ) {
+                        let d = processDevice(results[i]);
                         if ( d.type !== 'gateway') {
-                            if (d.current.light) {
-                                statusCache.set(d.id + '_light', d.current.light);
-                            }
                             statusCache.set(d.id, d.current.door);
                         }
                     }
@@ -332,21 +303,13 @@ function myq(config) {
     function loadSystem(){
         return new Promise( ( fulfill, reject ) => {
             call( api.system, 'get' )
-                .then( (result) => {
+                .then( (results) => {
                     let devices = [];
-                    for( var i in result.Devices ) {
-                        var device = result.Devices[i];
+                    for( var i in results ) {
+                        var device = results[i];
 
                         let d = processDevice (device);
 
-                        if ( d.current.light ){
-                            let d_light = {};
-                            d_light['name'] = d.name + ' (light)';
-                            d_light['id'] = d.id + '_light';
-                            d_light['type'] = 'switch';
-                            deviceCache.set(d_light.id, d_light);
-                            statusCache.set(d.id + '_light', d.current.light);
-                        }
                         if ( d.type !== 'gateway') {
                             statusCache.set(d.id, d.current.door);
                             delete d.current;
@@ -369,7 +332,7 @@ function myq(config) {
             function pollSystem() {
                 updateStatus()
                     .then((devices) => {
-                        setTimeout(pollSystem, 60000);
+                        setTimeout(pollSystem, 10000);
                     })
                     .catch((err) => {
                         console.error(err);
@@ -378,24 +341,24 @@ function myq(config) {
 
             }
 
-            setTimeout(pollSystem, 60000);
+            setTimeout(pollSystem, 10000);
 
         })
         .catch((err) => {
             console.error(err);
             process.exit(1);
         });
-/*
-    this.raw = function( params, success, failed ){
-        var url = api.system;
-        call( url, "get", null, function(data){
-            success(data);
-        });
-    };
-*/
-	this.system = function( params, success, failed ){
-		that.status( null, function( status ){
-			var devices = [];
+    /*
+     this.raw = function( params, success, failed ){
+     var url = api.system;
+     call( url, "get", null, function(data){
+     success(data);
+     });
+     };
+     */
+    this.system = function( params, success, failed ){
+        that.status( null, function( status ){
+            var devices = [];
 
             status.Devices.map( function(d){
                 var device = {};
@@ -408,9 +371,9 @@ function myq(config) {
                 }
             });
 
-			success( devices );
-		});
-	};
+            success( devices );
+        });
+    };
 
     return this;
 }

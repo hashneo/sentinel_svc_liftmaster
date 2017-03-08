@@ -1,10 +1,10 @@
 env.ARCH = 'arm'
 env.BUILD = '0.1.' + env.BUILD_NUMBER
 env.LATEST = 'latest'
-env.DOCKER_REGISTRY = 'steventaylor.me:5000'
+env.DOCKER_REGISTRY = 'docker.steventaylor.me'
 env.SERVICE_NAME = 'sentinel-liftmaster'
 env.CONTAINER1 = env.SERVICE_NAME + '-' + env.ARCH
-env.DOCKER_HOST = 'tcp://build-arm.steventaylor.me:2375'
+env.DOCKER_HOST = 'tcp://build-' + env.ARCH + '.steventaylor.me:2375'
 
 node {
 

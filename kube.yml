@@ -30,7 +30,7 @@ spec:
       containers:
         -
           name: sentinel-liftmaster
-          image: steventaylor.me:5000/sentinel-liftmaster-arm:latest
+          image: docker.steventaylor.me/sentinel-liftmaster-arm:latest
           imagePullPolicy: IfNotPresent
           env:
             -

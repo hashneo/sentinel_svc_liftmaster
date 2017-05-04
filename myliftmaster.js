@@ -193,7 +193,7 @@ function myq(config) {
 
         return new Promise( (fulfill, reject) => {
 
-            let url = api.set + '?myQDeviceId=' + id + '&attributename=' + attr + '&attributevalue=' + value;
+            let url = api.set + '?SerialNumber=' + id + '&attributename=' + attr + '&attributevalue=' + value;
             //https://www.myliftmaster.com/Device/TriggerStateChange?myQDeviceId=653445&attributename=desireddoorstate&attributevalue=1
 
             return call(url, 'POST' )

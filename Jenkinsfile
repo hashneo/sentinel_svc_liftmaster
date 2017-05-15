@@ -23,18 +23,18 @@ node {
         stage 'cleanup'
         sh 'docker rmi ${DOCKER_REGISTRY}/${CONTAINER1}:${BUILD}'
 
-        stage 'deploy'
-        def r = sh ( script: 'kubectl get deployments/${SERVICE_NAME}', returnStatus: true )
-
-        if (r == 0){
-            // update the image
-            sh 'kubectl set image deployment/${SERVICE_NAME} ${SERVICE_NAME}=${DOCKER_REGISTRY}/${CONTAINER1}:${BUILD}'
-        } else {
-            // deploy service
-            sh 'sed -e "s/\\:latest/:${BUILD}/" ./kube.yml | kubectl create -f - --record'
-        }
-
-        //sh 'docker service update --image  ${DOCKER_REGISTRY}/${CONTAINER1}:${BUILD} ${SERVICE_NAME}'
+//        stage 'deploy'
+//        def r = sh ( script: 'kubectl get deployments/${SERVICE_NAME}', returnStatus: true )
+//
+//        if (r == 0){
+//            // update the image
+//            sh 'kubectl set image deployment/${SERVICE_NAME} ${SERVICE_NAME}=${DOCKER_REGISTRY}/${CONTAINER1}:${BUILD}'
+//        } else {
+//            // deploy service
+//            sh 'sed -e "s/\\:latest/:${BUILD}/" ./kube.yml | kubectl create -f - --record'
+//        }
+//
+        sh 'docker service update --image  ${DOCKER_REGISTRY}/${CONTAINER1}:${BUILD} ${SERVICE_NAME}'
         //sh 'docker service create --name=${SERVICE_NAME} -e REDIS=10.0.1.10 -e CONSUL=10.0.1.10 --replicas=1 --network=sentinel ${DOCKER_REGISTRY}/${CONTAINER1}:${BUILD}'
     }
 }

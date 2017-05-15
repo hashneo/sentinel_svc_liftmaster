@@ -31,7 +31,7 @@ spec:
         -
           name: sentinel-liftmaster
           image: docker.steventaylor.me/sentinel-liftmaster-x86_64:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           env:
             -
               name: "PORT"
@@ -43,3 +43,5 @@ spec:
             -
               containerPort: 5000
               protocol: TCP
+      nodeSelector:
+          beta.kubernetes.io/arch: amd64

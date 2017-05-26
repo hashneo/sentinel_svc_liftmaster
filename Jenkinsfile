@@ -5,7 +5,7 @@ env.DOCKER_REGISTRY = 'docker.steventaylor.me'
 env.SERVICE_NAME = 'sentinel-liftmaster'
 env.CONTAINER1 = env.SERVICE_NAME + '-' + env.ARCH
 env.DOCKER_HOST = 'tcp://build-' + env.ARCH + '.steventaylor.me:2375'
-env.CONSUL = consul.steventaylor.me
+env.CONSUL = 'consul.steventaylor.me'
 
 env.USEKUBE = 0
 

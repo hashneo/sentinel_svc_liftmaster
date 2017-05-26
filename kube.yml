@@ -6,7 +6,7 @@ spec:
   type: ClusterIP
   ports:
   - name: http
-    port: 5050
+    port: 5000
     protocol: TCP
     targetPort: 5000
   selector:
@@ -38,7 +38,7 @@ spec:
               value: "5000"
             -
               name: "CONSUL"
-              value: "10.0.1.10"
+              value: "consul.steventaylor.me"
           ports:
             -
               containerPort: 5000

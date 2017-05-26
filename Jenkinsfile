@@ -1,4 +1,4 @@
-env.ARCH = 'x86_64'
+env.ARCH = 'arm'
 env.BUILD = '0.1.' + env.BUILD_NUMBER
 env.LATEST = 'latest'
 env.DOCKER_REGISTRY = 'docker.steventaylor.me'

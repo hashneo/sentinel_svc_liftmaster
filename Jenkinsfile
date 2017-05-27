@@ -35,7 +35,7 @@ node {
                 sh 'kubectl set image deployment/${SERVICE_NAME} ${SERVICE_NAME}=${DOCKER_REGISTRY}/${CONTAINER1}:${BUILD}'
             } else {
                 // deploy service
-                sh 'sed -e "s/\\:latest/:${BUILD}/; s/x86_64/${ARCH}/ ; s/consul\.steventaylor\.me/${CONSUL}/" ./kube.yml | kubectl create -f - --record'
+                sh 'sed -e "s/\\:latest/:${BUILD}/; s/x86_64/${ARCH}/ ; s/consul\\.steventaylor\\.me/${CONSUL}/" ./kube.yml | kubectl create -f - --record'
             }
         } else {
             def r = sh ( script: 'docker service ps ${SERVICE_NAME}', returnStatus: true )

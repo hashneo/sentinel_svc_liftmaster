@@ -6,6 +6,7 @@ services:
 variables:
   DOCKER_DRIVER: overlay
   BUILD_ARCH: "x86_64"
+  REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/$CI_PROJECT_NAME-$BUILD_ARCH
 
 stages:
   - build
@@ -15,14 +16,14 @@ build_job:
   stage: build
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.steventaylor.me
-    - docker build -t $CI_REGISTRY_IMAGE-$BUILD_ARCH:0.0.$CI_BUILD_ID -t $CI_REGISTRY_IMAGE-$BUILD_ARCH:latest -f Dockerfile.$BUILD_ARCH .
-    - docker push $CI_REGISTRY_IMAGE-$BUILD_ARCH:0.0.$CI_BUILD_ID
-    - docker push $CI_REGISTRY_IMAGE-$BUILD_ARCH:latest
+    - docker build -t $REGISTRY_IMAGE:0.0.$CI_BUILD_ID -t $REGISTRY_IMAGE:latest -f Dockerfile.$BUILD_ARCH .
+    - docker push $REGISTRY_IMAGE:0.0.$CI_BUILD_ID
+    - docker push $REGISTRY_IMAGE:latest
     - docker logout docker.steventaylor.me
 
 deploy_job:
   stage: deploy
   script:
     - docker -H tcp://$SENTINEL_HOST:2375 login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.steventaylor.me
-    - docker -H tcp://$SENTINEL_HOST:2375 service update --image $CI_REGISTRY_IMAGE-$BUILD_ARCH:0.0.$CI_BUILD_ID $CI_PROJECT_PATH_SLUG
+    - docker -H tcp://$SENTINEL_HOST:2375 service update --image $REGISTRY_IMAGE:0.0.$CI_BUILD_ID $CI_PROJECT_PATH_SLUG
     - docker -H tcp://$SENTINEL_HOST:2375 logout docker.steventaylor.me

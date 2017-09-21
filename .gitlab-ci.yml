@@ -5,15 +5,24 @@ services:
 
 variables:
   DOCKER_DRIVER: overlay
-  CI_DEBUG_TRACE: "true"
   BUILD_ARCH: "x86_64"
 
-before_script:
-  - docker info
+stages:
+  - build
+  - deploy
 
-build_image:
+build_job:
+  stage: build
   script:
     - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.steventaylor.me
-    - docker build -t $CI_REGISTRY_IMAGE:0.0.$CI_BUILD_ID -f Dockerfile.$BUILD_ARCH .
-    - docker push $CI_REGISTRY_IMAGE:0.0.$CI_BUILD_ID
+    - docker build -t $CI_REGISTRY_IMAGE-$BUILD_ARCH:0.0.$CI_BUILD_ID -t $CI_REGISTRY_IMAGE-$BUILD_ARCH:latest -f Dockerfile.$BUILD_ARCH .
+    - docker push $CI_REGISTRY_IMAGE-$BUILD_ARCH:0.0.$CI_BUILD_ID
+    - docker push $CI_REGISTRY_IMAGE-$BUILD_ARCH:latest
+    - docker logout docker.steventaylor.me
 
+deploy_job:
+  stage: deploy
+  script:
+    - docker -H tcp://$SENTINEL_HOST:2375 login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.steventaylor.me
+    - docker -H tcp://$SENTINEL_HOST:2375 service update --image $CI_REGISTRY_IMAGE-$BUILD_ARCH:0.0.$CI_BUILD_ID $CI_PROJECT_PATH_SLUG
+    - docker -H tcp://$SENTINEL_HOST:2375 logout docker.steventaylor.me

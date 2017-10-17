@@ -1,10 +1,10 @@
 require('array.prototype.find');
 
 // based off the https://github.com/pfeffed/liftmaster_myq codebase
-function myq(config) {
+function liftmaster(config) {
 
-    if ( !(this instanceof myq) ){
-        return new myq(config);
+    if ( !(this instanceof liftmaster) ){
+        return new liftmaster(config);
     }
 
     const redis = require('redis');
@@ -43,13 +43,22 @@ function myq(config) {
      require('request-debug')(request);
 */
 
-    deviceCache.on( "set", function( key, value ){
+    deviceCache.on( 'set', function( key, value ){
+        let data = JSON.stringify( { module: 'liftmaster', id : key, value : value });
+        console.log( 'sentinel.device.insert => ' + data );
+        pub.publish( 'sentinel.device.insert', data);
     });
 
-    statusCache.on( "set", function( key, value ){
+    deviceCache.on( 'delete', function( key ){
+        let data = JSON.stringify( { module: 'liftmaster', id : key });
+        console.log( 'sentinel.device.delete => ' + data );
+        pub.publish( 'sentinel.device.delete', data);
+    });
+
+    statusCache.on( 'set', function( key, value ){
         let data = JSON.stringify( { module: 'liftmaster', id : key, value : value });
-        console.log( data );
-        pub.publish("sentinel.device.update",  data);
+        console.log( 'sentinel.device.update => ' + data );
+        pub.publish( 'sentinel.device.update', data);
     });
 
     var api = {
@@ -376,4 +385,4 @@ function myq(config) {
     return this;
 }
 
-module.exports = myq;
+module.exports = liftmaster;

@@ -79,7 +79,7 @@ consul.kv.get(`config/sentinel/${moduleName}`, function(err, result) {
         let port = process.env.PORT || 5000;
         let server = app.listen(port, () => {
 
-            let host = require('ip').address();
+            let host = process.env.HOST || process.env.SERVICE_NAME || require('ip').address();
             let port = server.address().port;
 
             let module = {

@@ -51,10 +51,7 @@ paths:
           description: health information
           schema:
             $ref: '#/definitions/Status'
-        400:
-          description: bad request
-        410:
-          description: invalid service id
+
         default:
           $ref: '#/responses/Error'
 

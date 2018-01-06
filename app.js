@@ -8,7 +8,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const redis = require('redis');
 
-const uuid = require('node-uuid');
+const uuid = require('uuid');
 
 const consul = require('consul')( {
     host: process.env.CONSUL || '127.0.0.1',

@@ -5,7 +5,7 @@ module.exports.setLightState = (req, res) => {
     let id = req.swagger.params.id.value;
     let state = req.swagger.params.state.value;
 
-    global.module.setAttribute( id, 'worklightstate', state === 'on' ? '1' : '0' )
+    global.module.triggerStateChange( id, 'worklightstate', state === 'on' ? '1' : '0' )
         .then( (status) => {
             res.json( { data: { status: status }, result : 'ok' } );
         })

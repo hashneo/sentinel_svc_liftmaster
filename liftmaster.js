@@ -64,7 +64,7 @@ function liftmaster(config) {
     var api = {
         "login" : "/",
         "system" : "/api/MyQDevices/GetAllDevices?brandName=Liftmaster",
-        "set" : "/Device/TriggerStateChange"
+        "triggerStateChange" : "/Device/TriggerStateChange"
     };
 
     for( let k in api ){
@@ -209,25 +209,46 @@ function liftmaster(config) {
         5 : 'closing'
     };
 
-    this.setAttribute = ( id, attr, value ) => {
+    this.triggerStateChange = ( id, attr, value ) => {
 
         return new Promise( (fulfill, reject) => {
 
-            let url = api.set + '?SerialNumber=' + id + '&attributename=' + attr + '&attributevalue=' + value;
-            //https://www.myliftmaster.com/Device/TriggerStateChange?myQDeviceId=653445&attributename=desireddoorstate&attributevalue=1
+            statusCache.get( id, (err, status) => {
 
-            return call(url, 'POST' )
-                .then( (data) => {
-                    let result = {};
-                    /*
-                    result['id'] = id;
-                    result['updated'] = moment(parseInt(data.UpdatedTime)).format();
-                    */
-                    fulfill(result);
-                })
-                .catch( (err) =>{
-                    reject(err);
-                })
+                if ( err ){
+                    return reject(err);
+                }
+
+                let current;
+
+                if ( attr === 'desireddoorstate' ){
+                    current = (status.state === 'closed' ? '0' : '1' );
+                }
+
+                if ( attr === 'worklightstate' ){
+                    current = (status.state === 'off' ? '0' : '1' );
+                }
+
+                if ( value === current ){
+                    return fulfill({});
+                }
+
+                let url = api.triggerStateChange + '?SerialNumber=' + id + '&attributename=' + attr + '&attributevalue=' + value;
+
+                return call(url, 'POST' )
+                    .then( (data) => {
+                        let result = {};
+                        /*
+                        result['id'] = id;
+                        result['updated'] = moment(parseInt(data.UpdatedTime)).format();
+                        */
+                        fulfill(result);
+                    })
+                    .catch( (err) =>{
+                        reject(err);
+                    })
+
+            });
         });
     };
 

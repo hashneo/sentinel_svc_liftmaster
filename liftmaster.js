@@ -131,20 +131,32 @@ function liftmaster(config) {
                     return;
                 }
 
+                if (url === api.login && response.statusCode === 302 ){
+
+                    call(response.headers.location, 'GET')
+                        .then((result) => {
+                            fulfill(result);
+                        })
+                        .catch((err) => {
+                            reject(err);
+                        });
+
+                    return;
+                }
+
                 try {
-                    if ( response.headers['content-type'].indexOf('application/json') != -1) {
+                    if (response.headers['content-type'].indexOf('application/json') != -1) {
 
                         body = JSON.parse(body);
 
                         if (body.Message) {
                             if (body.Message === 'Authorization has been denied for this request.') {
-
-                                if ( url ===  api.login ){
-                                    reject( new Error( 'Invalid Authorization') );
+                                if (url === api.login) {
+                                    reject(new Error('Invalid Authorization'));
                                     return;
                                 }
-                                call( api.login, 'POST',  'Email=' + config.user + '&' + 'Password=' + config.password, 'application/x-www-form-urlencoded' )
-                                    .then( (result) => {
+                                call(api.login, 'POST', 'Email=' + config.user + '&' + 'Password=' + config.password, 'application/x-www-form-urlencoded')
+                                    .then((result) => {
                                         call(url, method, data)
                                             .then((result) => {
                                                 fulfill(result);
@@ -153,15 +165,14 @@ function liftmaster(config) {
                                                 reject(err);
                                             });
                                     })
-                                    .catch( (err) =>{
+                                    .catch((err) => {
                                         reject(err);
                                     });
-
                                 return;
                             }
                         }
                     }
-                }catch(e){
+                } catch (e) {
                     console.error(err);
                     reject(e);
                     return;
@@ -339,7 +350,7 @@ function liftmaster(config) {
             function pollSystem() {
                 updateStatus()
                     .then((devices) => {
-                        setTimeout(pollSystem, 10000);
+                        //setTimeout(pollSystem, 10000);
                     })
                     .catch((err) => {
                         console.error(err);

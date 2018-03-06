@@ -350,7 +350,7 @@ function liftmaster(config) {
             function pollSystem() {
                 updateStatus()
                     .then((devices) => {
-                        //setTimeout(pollSystem, 10000);
+                        setTimeout(pollSystem, 10000);
                     })
                     .catch((err) => {
                         console.error(err);

@@ -60,4 +60,4 @@ deploy_job_staging:
     - kubectl config use-context kubernetes
 
   script:
-    - kubectl set image 'deployment/$SERVICE_NAME' '$SERVICE_NAME=docker.steventaylor.me/$REGISTRY_IMAGE:$CI_COMMIT_SHA'
+    - kubectl set image deployment/$SERVICE_NAME $SERVICE_NAME=docker.steventaylor.me/$REGISTRY_IMAGE:$CI_COMMIT_SHA

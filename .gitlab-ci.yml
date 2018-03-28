@@ -8,7 +8,8 @@ variables:
   BUILD_ARCH: "x86_64"
   REGISTRY_IMAGE: $CI_REGISTRY_IMAGE/$CI_PROJECT_NAME-$BUILD_ARCH
   KUBECONFIG: /etc/deploy/config
-  CI_DEBUG_TRACE: "true"
+  CI_DEBUG_TRACE: "false"
+  SERVICE_NAME: sentinel-$CI_PROJECT_NAME
 
 stages:
   - build
@@ -46,17 +47,14 @@ build_job_development:
     - docker push $REGISTRY_IMAGE:latest-staging
     - docker logout docker.steventaylor.me
 
-.deploy_job_staging:
+deploy_job_staging:
   stage: deploy
   only:
     - development
   before_script:
     - mkdir -p /etc/deploy
-    - echo ${kube_config} | base64 -d > ${KUBECONFIG}
+    - echo $KUBE_CONFIG | base64 -d > $KUBECONFIG
     - kubectl config use-context kubernetes
 
   script:
-    - docker -H tcp://$SENTINEL_STAGING:2375 login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.steventaylor.me
-    - docker -H tcp://$SENTINEL_STAGING:2375 pull $REGISTRY_IMAGE:$CI_COMMIT_SHA
-    - docker -H tcp://$SENTINEL_STAGING:2375 service update --image $REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_PROJECT_PATH_SLUG
-    - docker -H tcp://$SENTINEL_STAGING:2375 logout docker.steventaylor.me
+    - kubectl set image 'deployment/$SERVICE_NAME' '$SERVICE_NAME=docker.steventaylor.me/$REGISTRY_IMAGE:$CI_COMMIT_SHA'

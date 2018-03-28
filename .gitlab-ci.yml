@@ -53,6 +53,9 @@ deploy_job_staging:
     - development
   before_script:
     - mkdir -p /etc/deploy
+    - curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+    - chmod +x ./kubectl
+    - mv ./kubectl /bin/kubectl
     - echo $KUBE_CONFIG | base64 -d > $KUBECONFIG
     - kubectl config use-context kubernetes
 

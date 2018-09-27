@@ -145,8 +145,9 @@ function liftmaster(config) {
                 }
 
                 try {
-                    //if (response.headers['content-type'].indexOf('application/json') != -1) {
+                    if (response.headers['content-type'].indexOf('application/json') != -1) {
 
+                    console.log( body.toString('utf-8'));
                         body = JSON.parse(body);
 
                         if (body.Message) {
@@ -171,7 +172,7 @@ function liftmaster(config) {
                                 return;
                             }
                         }
-                    //}
+                    }
                 } catch (e) {
                     console.error(err);
                     reject(e);

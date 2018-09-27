@@ -145,7 +145,7 @@ function liftmaster(config) {
                 }
 
                 try {
-                    if (response.headers['content-type'].indexOf('application/json') != -1) {
+                    //if (response.headers['content-type'].indexOf('application/json') != -1) {
 
                         body = JSON.parse(body);
 
@@ -171,7 +171,7 @@ function liftmaster(config) {
                                 return;
                             }
                         }
-                    }
+                    //}
                 } catch (e) {
                     console.error(err);
                     reject(e);

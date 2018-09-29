@@ -147,7 +147,8 @@ function liftmaster(config) {
                 try {
                     if (response.headers['content-type'].indexOf('application/json') != -1) {
 
-                    console.log( body.toString('utf-8'));
+                        console.log( body.toString('utf-8'));
+
                         body = JSON.parse(body);
 
                         if (body.Message) {
@@ -315,7 +316,6 @@ function liftmaster(config) {
 
     };
 
-
     function updateStatus() {
         return new Promise( ( fulfill, reject ) => {
             call( api.system, 'get' )
@@ -323,7 +323,12 @@ function liftmaster(config) {
                     for( let i in results ) {
                         let d = processDevice(results[i]);
                         if ( d.type !== 'gateway') {
-                            statusCache.set(d.id, d.current.door);
+                            try {
+                                statusCache.set(d.id, d.current.door);
+                            }
+                            catch(err){
+                                reject(err);
+                            }
                         }
                     }
                     fulfill();

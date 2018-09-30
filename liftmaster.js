@@ -91,7 +91,7 @@ function liftmaster(config) {
         device['name'] = d.Name;
 
         device['id'] = hashId( d.Gateway + ' - ' + d.Name);
-
+        device['myq'] = { id : d.MyQDeviceId };
         device['type'] = mapDeviceType( d.DeviceTypeId );
         device['current']['door'] = {};
         device['current']['door']['state'] = stateMap[ parseInt(d.State) ];
@@ -246,21 +246,23 @@ function liftmaster(config) {
                     return fulfill({});
                 }
 
-                let url = api.triggerStateChange + '?SerialNumber=' + id + '&attributename=' + attr + '&attributevalue=' + value;
+                deviceCache.get( id, (err, device) => {
 
-                return call(url, 'POST' )
-                    .then( (data) => {
-                        let result = {};
-                        /*
-                        result['id'] = id;
-                        result['updated'] = moment(parseInt(data.UpdatedTime)).format();
-                        */
-                        fulfill(result);
-                    })
-                    .catch( (err) =>{
-                        reject(err);
-                    })
+                    let url = api.triggerStateChange + '?SerialNumber=' + device.myq.id; + '&attributename=' + attr + '&attributevalue=' + value;
 
+                    return call(url, 'POST' )
+                        .then( (data) => {
+                            let result = {};
+                            /*
+                            result['id'] = id;
+                            result['updated'] = moment(parseInt(data.UpdatedTime)).format();
+                            */
+                            fulfill(result);
+                        })
+                        .catch( (err) =>{
+                            reject(err);
+                        })
+                });
             });
         });
     };
@@ -298,6 +300,7 @@ function liftmaster(config) {
 
                             if ( statuses[key] ) {
                                 v.current = statuses[key];
+                                delete v.myq;
                                 data.push(v);
                             }
                         }

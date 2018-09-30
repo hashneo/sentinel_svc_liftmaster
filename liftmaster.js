@@ -7,6 +7,9 @@ function liftmaster(config) {
         return new liftmaster(config);
     }
 
+    const uuidv5 = require('uuid/v5');
+    const crypto = require('crypto');
+
     const redis = require('redis');
     var moment = require('moment');
 
@@ -77,10 +80,18 @@ function liftmaster(config) {
 
     var typeNameCache = { 'devices' : {}, 'attributes' : {} };
 
+    function hashId(v){
+        let shasum = crypto.createHash('sha1');
+        shasum.update(v);
+        return shasum.digest('hex').toUpperCase();
+    }
+
     function processDevice( d ){
         var device = { 'current' : {} };
         device['name'] = d.Name;
-        device['id'] = d.MyQDeviceId;
+
+        device['id'] = hashId( d.Gateway + ' - ' + d.Name);
+
         device['type'] = mapDeviceType( d.DeviceTypeId );
         device['current']['door'] = {};
         device['current']['door']['state'] = stateMap[ parseInt(d.State) ];

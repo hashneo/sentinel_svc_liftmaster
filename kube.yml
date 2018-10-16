@@ -30,7 +30,7 @@ spec:
       containers:
         -
           name: sentinel-liftmaster
-          image: docker.steventaylor.me/sentinel-liftmaster-x86_64:latest
+          image: docker.steventaylor.me/sentinel/services/liftmaster/liftmaster-x86_64:latest-staging
           imagePullPolicy: Always
           env:
             -
@@ -39,9 +39,14 @@ spec:
             -
               name: "CONSUL"
               value: "consul.steventaylor.me"
+            -
+              name: "REDIS"
+              value: "redis-redis"
           ports:
             -
               containerPort: 5000
               protocol: TCP
+      imagePullSecrets:
+      - name: regcred
       nodeSelector:
           beta.kubernetes.io/arch: amd64

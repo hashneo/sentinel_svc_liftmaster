@@ -7,6 +7,9 @@ function liftmaster(config) {
         return new liftmaster(config);
     }
 
+    const uuidv5 = require('uuid/v5');
+    const crypto = require('crypto');
+
     const redis = require('redis');
     var moment = require('moment');
 
@@ -77,10 +80,18 @@ function liftmaster(config) {
 
     var typeNameCache = { 'devices' : {}, 'attributes' : {} };
 
+    function hashId(v){
+        let shasum = crypto.createHash('sha1');
+        shasum.update(v);
+        return shasum.digest('hex').toUpperCase();
+    }
+
     function processDevice( d ){
         var device = { 'current' : {} };
         device['name'] = d.Name;
-        device['id'] = d.MyQDeviceId;
+
+        device['id'] = hashId( d.Gateway + ' - ' + d.Name);
+        device['myq'] = { id : d.MyQDeviceId };
         device['type'] = mapDeviceType( d.DeviceTypeId );
         device['current']['door'] = {};
         device['current']['door']['state'] = stateMap[ parseInt(d.State) ];
@@ -146,6 +157,8 @@ function liftmaster(config) {
 
                 try {
                     if (response.headers['content-type'].indexOf('application/json') != -1) {
+
+                        console.log( body.toString('utf-8'));
 
                         body = JSON.parse(body);
 
@@ -233,21 +246,23 @@ function liftmaster(config) {
                     return fulfill({});
                 }
 
-                let url = api.triggerStateChange + '?SerialNumber=' + id + '&attributename=' + attr + '&attributevalue=' + value;
+                deviceCache.get( id, (err, device) => {
 
-                return call(url, 'POST' )
-                    .then( (data) => {
-                        let result = {};
-                        /*
-                        result['id'] = id;
-                        result['updated'] = moment(parseInt(data.UpdatedTime)).format();
-                        */
-                        fulfill(result);
-                    })
-                    .catch( (err) =>{
-                        reject(err);
-                    })
+                    let url = api.triggerStateChange + '?SerialNumber=' + device.myq.id; + '&attributename=' + attr + '&attributevalue=' + value;
 
+                    return call(url, 'POST' )
+                        .then( (data) => {
+                            let result = {};
+                            /*
+                            result['id'] = id;
+                            result['updated'] = moment(parseInt(data.UpdatedTime)).format();
+                            */
+                            fulfill(result);
+                        })
+                        .catch( (err) =>{
+                            reject(err);
+                        })
+                });
             });
         });
     };
@@ -285,6 +300,7 @@ function liftmaster(config) {
 
                             if ( statuses[key] ) {
                                 v.current = statuses[key];
+                                delete v.myq;
                                 data.push(v);
                             }
                         }
@@ -314,7 +330,6 @@ function liftmaster(config) {
 
     };
 
-
     function updateStatus() {
         return new Promise( ( fulfill, reject ) => {
             call( api.system, 'get' )
@@ -322,7 +337,12 @@ function liftmaster(config) {
                     for( let i in results ) {
                         let d = processDevice(results[i]);
                         if ( d.type !== 'gateway') {
-                            statusCache.set(d.id, d.current.door);
+                            try {
+                                statusCache.set(d.id, d.current.door);
+                            }
+                            catch(err){
+                                reject(err);
+                            }
                         }
                     }
                     fulfill();

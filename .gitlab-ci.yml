@@ -13,26 +13,19 @@ variables:
 
 stages:
   - build
-  - push
   - deploy
-  - cleanup
 
 build_job:
   stage: build
   only:
     - master
   script:
-    - docker build --build-arg CI_JOB_AUTH=gitlab-ci-token:$CI_JOB_TOKEN -t $REGISTRY_IMAGE:$CI_PIPELINE_ID-$CI_COMMIT_SHA -t $REGISTRY_IMAGE:latest -f Dockerfile.$BUILD_ARCH .
-
-push_job:
-  stage: build
-  only:
-  - master
-  script:
-  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.steventaylor.me
-  - docker push $REGISTRY_IMAGE:$CI_PIPELINE_ID-$CI_COMMIT_SHA
-  - docker push $REGISTRY_IMAGE:latest
-  - docker logout docker.steventaylor.me
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN docker.steventaylor.me
+    - docker build --force-rm --no-cache --build-arg CI_JOB_AUTH=gitlab-ci-token:$CI_JOB_TOKEN -t $REGISTRY_IMAGE:$CI_PIPELINE_ID-$CI_COMMIT_SHA -t $REGISTRY_IMAGE:latest -f Dockerfile.$BUILD_ARCH .
+    - docker push $REGISTRY_IMAGE:$CI_PIPELINE_ID-$CI_COMMIT_SHA
+    - docker push $REGISTRY_IMAGE:latest
+    - docker logout docker.steventaylor.me
+    - docker rmi $REGISTRY_IMAGE:$CI_PIPELINE_ID-$CI_COMMIT_SHA $REGISTRY_IMAGE:latest
 
 deploy_job:
   stage: deploy
@@ -47,10 +40,3 @@ deploy_job:
     - kubectl config use-context kubernetes
   script:
     - kubectl set image deployment/$SERVICE_NAME $SERVICE_NAME=$REGISTRY_IMAGE:$CI_PIPELINE_ID-$CI_COMMIT_SHA
-
-cleanup_job:
-  stage: cleanup
-  only:
-    - master
-  script:
-    - docker rmi $REGISTRY_IMAGE:$CI_PIPELINE_ID-$CI_COMMIT_SHA $REGISTRY_IMAGE:latest

@@ -30,18 +30,12 @@ spec:
       containers:
         -
           name: sentinel-liftmaster
-          image: docker.steventaylor.me/sentinel/services/liftmaster/liftmaster-x86_64:latest-staging
+          image: docker.steventaylor.me/sentinel/services/liftmaster/liftmaster-x86_64:latest
           imagePullPolicy: Always
           env:
             -
               name: "PORT"
               value: "5000"
-            -
-              name: "CONSUL"
-              value: "consul.steventaylor.me"
-            -
-              name: "REDIS"
-              value: "redis-redis"
           ports:
             -
               containerPort: 5000

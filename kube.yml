@@ -33,9 +33,10 @@ spec:
           image: docker.steventaylor.me/sentinel/services/liftmaster/liftmaster-x86_64:latest
           imagePullPolicy: Always
           env:
-            -
-              name: "PORT"
-              value: "5000"
+          - name: PORT
+            value: "5000"
+          - name: CONSUL
+            value: "consul"
           ports:
             -
               containerPort: 5000

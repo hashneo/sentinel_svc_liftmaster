@@ -59,15 +59,6 @@ consul.kv.get(`config/sentinel/${moduleName}`, function(err, result) {
     global.config = config;
     global.config.save();
 
-
-    let pub = redis.createClient(
-        {
-            host: process.env.REDIS || global.config.redis || '127.0.0.1',
-            socket_keepalive: true,
-            retry_unfulfilled_commands: true
-        }
-    );
-
     SwaggerExpress.create(appConfig, function (err, swaggerExpress) {
         if (err) {
             throw err;
@@ -99,6 +90,14 @@ consul.kv.get(`config/sentinel/${moduleName}`, function(err, result) {
             };
 
             process.env.SERVICE_ID = serviceId;
+
+            let pub = redis.createClient(
+                {
+                    host: process.env.REDIS || global.config.redis || '127.0.0.1',
+                    socket_keepalive: true,
+                    retry_unfulfilled_commands: true
+                }
+            );
 
             pub.on('ready', function(e){
 

@@ -13,6 +13,8 @@ function liftmaster(config) {
     const redis = require('redis');
     var moment = require('moment');
 
+    const logger = require('sentinel-common').logger;
+
     let pub = redis.createClient(
         {
             host: process.env.REDIS || global.config.redis || '127.0.0.1' ,
@@ -22,7 +24,7 @@ function liftmaster(config) {
     );
 
     pub.on('end', function(e){
-        console.log('Redis hung up, committing suicide');
+        logger.error('Redis hung up, committing suicide');
         process.exit(1);
     });
 
@@ -48,19 +50,19 @@ function liftmaster(config) {
 
     deviceCache.on( 'set', function( key, value ){
         let data = JSON.stringify( { module: 'liftmaster', id : key, value : value });
-        console.log( 'sentinel.device.insert => ' + data );
+        logger.info( 'sentinel.device.insert => ' + data );
         pub.publish( 'sentinel.device.insert', data);
     });
 
     deviceCache.on( 'delete', function( key ){
         let data = JSON.stringify( { module: 'liftmaster', id : key });
-        console.log( 'sentinel.device.delete => ' + data );
+        logger.info( 'sentinel.device.delete => ' + data );
         pub.publish( 'sentinel.device.delete', data);
     });
 
     statusCache.on( 'set', function( key, value ){
         let data = JSON.stringify( { module: 'liftmaster', id : key, value : value });
-        //console.log( 'sentinel.device.update => ' + data );
+        logger.debug( 'sentinel.device.update => ' + data );
         pub.publish( 'sentinel.device.update', data);
     });
 
@@ -130,12 +132,12 @@ function liftmaster(config) {
                 options['headers']['content-type'] = type;
             }
 
-            console.log( options.url );
-            //console.log( data );
+            logger.debug( options.url );
+            //logger.info( data );
 
             request(options, (err, response, body) => {
 
-                //console.log(body.toString('utf8'));
+                //logger.info(body.toString('utf8'));
 
                 if ( err ) {
                     reject(err);
@@ -158,7 +160,7 @@ function liftmaster(config) {
                 try {
                     if (response.headers['content-type'].indexOf('application/json') != -1) {
 
-                        console.log( body.toString('utf-8'));
+                        logger.debug(body.toString('utf-8'));
 
                         body = JSON.parse(body);
 
@@ -186,7 +188,7 @@ function liftmaster(config) {
                         }
                     }
                 } catch (e) {
-                    console.error(err);
+                    logger.error(err);
                     reject(e);
                     return;
                 }
@@ -394,9 +396,9 @@ function liftmaster(config) {
                         setTimeout(pollSystem, 10000);
                     })
                     .catch((err) => {
-                        console.error(err);
-                        process.exit(1);
-                        //setTimeout(pollSystem, 60000);
+                        logger.error(err);
+                        //process.exit(1);
+                        setTimeout(pollSystem, 60000);
                     });
 
             }
@@ -405,7 +407,7 @@ function liftmaster(config) {
 
         })
         .catch((err) => {
-            console.error(err);
+            logger.error(err);
             process.exit(1);
         });
     /*

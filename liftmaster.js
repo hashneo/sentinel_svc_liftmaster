@@ -397,8 +397,8 @@ function liftmaster(config) {
                     })
                     .catch((err) => {
                         logger.error(err);
-                        //process.exit(1);
-                        setTimeout(pollSystem, 60000);
+                        process.exit(1);
+                        //setTimeout(pollSystem, 60000);
                     });
 
             }

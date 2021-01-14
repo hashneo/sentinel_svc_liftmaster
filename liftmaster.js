@@ -250,7 +250,7 @@ function liftmaster(config) {
 
                 deviceCache.get( id, (err, device) => {
 
-                    let url = api.triggerStateChange + '?SerialNumber=' + device.myq.id; + '&attributename=' + attr + '&attributevalue=' + value;
+                    let url = api.triggerStateChange + '?SerialNumber=' + device.myq.id + '&attributename=' + attr + '&attributevalue=' + value;
 
                     return call(url, 'POST' )
                         .then( (data) => {

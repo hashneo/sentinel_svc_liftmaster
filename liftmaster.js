@@ -7,9 +7,6 @@ function liftmaster(config) {
         return new liftmaster(config);
     }
 
-    const uuidv5 = require('uuid/v5');
-    const crypto = require('crypto');
-
     const redis = require('redis');
     var moment = require('moment');
 
@@ -35,19 +32,6 @@ function liftmaster(config) {
 
     var merge = require('deepmerge');
 
-    var request = require('request');
-
-    var jar = request.jar();
-
-    request = request.defaults({jar: jar});
-
-    var https = require('https');
-    var keepAliveAgent = new https.Agent({ keepAlive: true });
-/*
-     require('request').debug = true
-     require('request-debug')(request);
-*/
-
     deviceCache.on( 'set', function( key, value ){
         let data = JSON.stringify( { module: 'liftmaster', id : key, value : value });
         logger.info( 'sentinel.device.insert => ' + data );
@@ -66,218 +50,103 @@ function liftmaster(config) {
         pub.publish( 'sentinel.device.update', data);
     });
 
-    var api = {
-        "login" : "/",
-        "system" : "/api/MyQDevices/GetAllDevices?brandName=Liftmaster",
-        "triggerStateChange" : "/Device/TriggerStateChange"
-    };
+    const that = this;
 
-    for( let k in api ){
-        api[k] = api[k].replace('{appId}', config.appid).replace('{culture}', config.culture);
+    let skipPoll = false;
+
+    const MyQ = require('myq-api');
+
+    const account = new MyQ();
+
+    function login() {
+
+        return new Promise( (fulfill, reject) => {
+
+            account.login(global.config.user, global.config.password)
+                .then((result) => {
+                    fulfill(account);
+                })
+                .catch((err) => {
+                    logger.error(err);
+                    reject(err);
+                });
+        });
     }
 
-    var that = this;
+    this.setDoorState = (id, state) => {
+        return new Promise( (fulfill, reject) => {
 
-    var token = null;
+            deviceCache.get( id, (err) => {
+                if (err)
+                    return reject(err);
 
-    var typeNameCache = { 'devices' : {}, 'attributes' : {} };
+                statusCache.get( id, (err,value) => {
+                    if (err)
+                        return reject(err);
 
-    function hashId(v){
-        let shasum = crypto.createHash('sha1');
-        shasum.update(v);
-        return shasum.digest('hex').toUpperCase();
+                    switch ( state ){
+                        case 'open':
+                            if ( value.state === 'opening')
+                                return reject( { code : 409, message : 'door currently opening' } );
+                            if ( value.state === 'closing')
+                                return reject( { code : 409, message : 'door currently closing' } );
+                            if ( value.state === 'open')
+                                return fulfill( 'open' );
+                            value.state = 'opening';
+                            break;
+                        case 'close':
+                            if ( value.state === 'closing')
+                                return reject( { code : 409, message : 'door currently closing' } );
+                            if ( value.state === 'opening')
+                                return reject( { code : 409, message : 'door currently opening' } );
+                            if ( value.state === 'closed')
+                                return fulfill( 'closed' );
+                            value.state = 'closing';
+                            break;
+                    }
+
+                    login()
+                        .then(function (result) {
+                            return account.setDoorState(id, state === 'open' ? MyQ.actions.door.OPEN : MyQ.actions.door.CLOSE);
+                        })
+                        .then(function (result) {
+                            skipPoll = true;
+                            statusCache.set( id, value);
+                            //updateStatus();
+                            fulfill( value.state );
+                        })
+                        .catch(function (err) {
+                            logger.error(err);
+                            reject(err);
+                        });
+                });
+
+            });
+        })
+    };
+
+    function mapDeviceType(type){
+        switch (type){
+            case 'ethernetgateway':
+                return 'gateway';
+            case 'garagedooropener':
+                return 'garage.opener';
+        }
+        return null;
     }
 
     function processDevice( d ){
-        var device = { 'current' : {} };
-        device['name'] = d.Name;
+        let device = { 'current' : {} };
+        device['name'] = d.name;
+        device['id'] = d.serial_number;
+        device['type'] = mapDeviceType( d.device_type );
 
-        device['id'] = hashId( d.Gateway + ' - ' + d.Name);
-        device['myq'] = { id : d.MyQDeviceId };
-        device['type'] = mapDeviceType( d.DeviceTypeId );
-        device['current']['door'] = {};
-        device['current']['door']['state'] = stateMap[ parseInt(d.State) ];
-        device['current']['door']['updated'] = moment(d.LastUpdateDateTime).format();
-        device['current']['door']['locked'] = d.DisableControl;
-        return device;
-    }
-
-    function call(url, method, data, type){
-
-        return new Promise( (fulfill, reject) => {
-
-            type = type || 'application/json';
-
-            let options = {
-                url : 'https://' + config.server + url,
-                method : method,
-                encoding : null,
-                headers : {
-                    'accept' : 'application/json',
-                    'User-Agent' : 'Mozilla/5.0'
-                },
-                timeout : 90000,
-                agent : keepAliveAgent,
-                followRedirect: false
-            };
-
-            if ( data === undefined )
-                data = null;
-
-            if ( data !== null ){
-                if ( type === 'application/json' )
-                    data = JSON.stringify(data);
-
-                options['body'] = data;
-                options['headers']['content-type'] = type;
-            }
-
-            logger.debug( options.url );
-            //logger.info( data );
-
-            request(options, (err, response, body) => {
-
-                //logger.info(body.toString('utf8'));
-
-                if ( err ) {
-                    reject(err);
-                    return;
-                }
-
-                if (url === api.login && response.statusCode === 302 ){
-
-                    call(response.headers.location, 'GET')
-                        .then((result) => {
-                            fulfill(result);
-                        })
-                        .catch((err) => {
-                            reject(err);
-                        });
-
-                    return;
-                }
-
-                try {
-                    if (response.headers['content-type'].indexOf('application/json') != -1) {
-
-                        logger.debug(body.toString('utf-8'));
-
-                        body = JSON.parse(body);
-
-                        if (body.Message) {
-                            if (body.Message === 'Authorization has been denied for this request.') {
-                                if (url === api.login) {
-                                    reject(new Error('Invalid Authorization'));
-                                    return;
-                                }
-                                call(api.login, 'POST', 'Email=' + config.user + '&' + 'Password=' + config.password, 'application/x-www-form-urlencoded')
-                                    .then((result) => {
-                                        call(url, method, data)
-                                            .then((result) => {
-                                                fulfill(result);
-                                            })
-                                            .catch((err) => {
-                                                reject(err);
-                                            });
-                                    })
-                                    .catch((err) => {
-                                        reject(err);
-                                    });
-                                return;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    logger.error(err);
-                    reject(e);
-                    return;
-                }
-
-                let cookies = jar.getCookies(options.url);
-
-                let hasSession = false;
-                cookies.forEach( (cookie) => {
-                    if ( cookie.key === '.AspNet.ApplicationCookie' )
-                        hasSession = true;
-                });
-
-                if ( !hasSession ){
-                    reject( new Error('User could not be authenticated') );
-                    return;
-                }
-
-                fulfill( body );
-
-            });
-        });
-    }
-
-    function login(){
-
-    }
-
-    const stateMap = {
-        1 : 'open',
-        2 : 'closed',
-        3 : '3',
-        4 : 'opening',
-        5 : 'closing'
-    };
-
-    this.triggerStateChange = ( id, attr, value ) => {
-
-        return new Promise( (fulfill, reject) => {
-
-            statusCache.get( id, (err, status) => {
-
-                if ( err ){
-                    return reject(err);
-                }
-
-                let current;
-
-                if ( attr === 'desireddoorstate' ){
-                    current = (status.state === 'closed' ? '0' : '1' );
-                }
-
-                if ( attr === 'worklightstate' ){
-                    current = (status.state === 'off' ? '0' : '1' );
-                }
-
-                if ( value === current ){
-                    return fulfill({});
-                }
-
-                deviceCache.get( id, (err, device) => {
-
-                    let url = api.triggerStateChange + '?SerialNumber=' + device.myq.id + '&attributename=' + attr + '&attributevalue=' + value;
-
-                    return call(url, 'POST' )
-                        .then( (data) => {
-                            let result = {};
-                            /*
-                            result['id'] = id;
-                            result['updated'] = moment(parseInt(data.UpdatedTime)).format();
-                            */
-                            fulfill(result);
-                        })
-                        .catch( (err) =>{
-                            reject(err);
-                        })
-                });
-            });
-        });
-    };
-
-    function mapDeviceType( type ){
-        switch (type ){
-            case 1 : // Gateway
-                return 'gateway';
-            case 2 : // GarageDoorOpener
-                return 'garage.opener';
+        if ( d.device_type === 'garagedooropener') {
+            device['current']['door'] = {};
+            device['current']['door']['state'] = d.state.door_state;
+            device['current']['door']['updated'] = d.state.last_update;
         }
-
-        return type;
+        return device;
     }
 
     this.getDevices = () => {
@@ -334,10 +203,19 @@ function liftmaster(config) {
 
     function updateStatus() {
         return new Promise( ( fulfill, reject ) => {
-            call( api.system, 'get' )
+
+            if ( skipPoll ){
+                skipPoll = false;
+                return fulfill();
+            }
+
+            login()
+                .then( (context) => {
+                    return context.getDevices();
+                })
                 .then( (results) => {
-                    for( let i in results ) {
-                        let d = processDevice(results[i]);
+                    for( let i in results.devices ) {
+                        let d = processDevice(results.devices[i]);
                         if ( d.type !== 'gateway') {
                             try {
                                 statusCache.set(d.id, d.current.door);
@@ -363,11 +241,17 @@ function liftmaster(config) {
 
     function loadSystem(){
         return new Promise( ( fulfill, reject ) => {
-            call( api.system, 'get' )
+
+            login()
+                .then( (context) => {
+                    return context.getDevices();
+                })
                 .then( (results) => {
+
                     let devices = [];
-                    for( var i in results ) {
-                        var device = results[i];
+
+                    for( let i in results.devices ) {
+                        let device = results.devices[i];
 
                         let d = processDevice (device);
 
@@ -410,32 +294,6 @@ function liftmaster(config) {
             logger.error(err);
             process.exit(1);
         });
-    /*
-     this.raw = function( params, success, failed ){
-     var url = api.system;
-     call( url, "get", null, function(data){
-     success(data);
-     });
-     };
-     */
-    this.system = function( params, success, failed ){
-        that.status( null, function( status ){
-            var devices = [];
-
-            status.Devices.map( function(d){
-                var device = {};
-
-                //if ( d.MyQDeviceTypeName !== undefined )
-                //    typeNameCache.devices[d.MyQDeviceTypeId] = d.MyQDeviceTypeName;
-
-                if ( d.MyQDeviceTypeId !== 1 /*Gateway*/ ) {
-                    devices.push( processDevice( d ) );
-                }
-            });
-
-            success( devices );
-        });
-    };
 
     return this;
 }

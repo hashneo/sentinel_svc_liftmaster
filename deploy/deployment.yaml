@@ -18,23 +18,15 @@ spec:
       -
         name: app
         image: docker.io/hashneo/sentinel-svc-liftmaster-x86_64:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: PORT
           value: "5000"
         - name: CONSUL
-          value: "consul"
+          value: consul
         - name: NEW_RELIC_NO_CONFIG_FILE
-          value: "true"
-        - name: NEW_RELIC_ENABLED
-          value: "true"
-        - name: NEW_RELIC_APP_NAME
-          value: "Sentinel Liftmaster"
-        - name: NEW_RELIC_LICENSE_KEY
-          value: ""
+          value: "false"
         ports:
         -
           containerPort: 5000
           protocol: TCP
-      nodeSelector:
-        beta.kubernetes.io/arch: amd64
